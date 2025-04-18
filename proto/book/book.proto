@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+package book;
+
+option go_package = "github.com/fairuzald/library-system/proto/book";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+service BookService {
+  rpc GetBook(GetBookRequest) returns (BookResponse);
+  rpc ListBooks(ListBooksRequest) returns (ListBooksResponse);
+  rpc CreateBook(CreateBookRequest) returns (BookResponse);
+  rpc UpdateBook(UpdateBookRequest) returns (BookResponse);
+  rpc DeleteBook(DeleteBookRequest) returns (google.protobuf.Empty);
+  rpc SearchBooks(SearchBooksRequest) returns (ListBooksResponse);
+  rpc GetBooksByCategory(GetBooksByCategoryRequest) returns (ListBooksResponse);
+  rpc Health(google.protobuf.Empty) returns (HealthResponse);
+}
+
+message Book {
+  string id = 1;
+  string title = 2;
+  string author = 3;
+  string isbn = 4;
+  int32 published_year = 5;
+  string publisher = 6;
+  string description = 7;
+  repeated string category_ids = 8;
+  string language = 9;
+  int32 page_count = 10;
+  string status = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+  optional string cover_image = 14;
+  optional float average_rating = 15;
+  optional int32 quantity = 16;
+  optional int32 available_quantity = 17;
+}
+
+message GetBookRequest {
+  string id = 1;
+}
+
+message ListBooksRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+  optional string sort_by = 3;
+  optional bool sort_desc = 4;
+}
+
+message CreateBookRequest {
+  string title = 1;
+  string author = 2;
+  string isbn = 3;
+  int32 published_year = 4;
+  string publisher = 5;
+  string description = 6;
+  repeated string category_ids = 7;
+  string language = 8;
+  int32 page_count = 9;
+  optional string cover_image = 10;
+  optional int32 quantity = 11;
+}
+
+message UpdateBookRequest {
+  string id = 1;
+  optional string title = 2;
+  optional string author = 3;
+  optional string isbn = 4;
+  optional int32 published_year = 5;
+  optional string publisher = 6;
+  optional string description = 7;
+  repeated string category_ids = 8;
+  optional string language = 9;
+  optional int32 page_count = 10;
+  optional string status = 11;
+  optional string cover_image = 12;
+  optional int32 quantity = 13;
+  optional int32 available_quantity = 14;
+}
+
+message DeleteBookRequest {
+  string id = 1;
+}
+
+message SearchBooksRequest {
+  string query = 1;
+  optional string field = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message GetBooksByCategoryRequest {
+  string category_id = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+}
+
+message BookResponse {
+  Book book = 1;
+}
+
+message ListBooksResponse {
+  repeated Book books = 1;
+  int64 total_items = 2;
+  int32 total_pages = 3;
+  int32 current_page = 4;
+  int32 page_size = 5;
+}
+
+message HealthResponse {
+  string status = 1;
+  string version = 2;
+}

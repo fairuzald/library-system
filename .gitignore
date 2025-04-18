@@ -1,0 +1,86 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+tmp/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+*.prof
+*.cov
+
+# Go workspace file
+go.work
+
+# Dependency directories
+vendor/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Log files
+*.log
+logs/
+
+# Docker volumes
+**/data/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Migration version files
+schema.sql
+
+# Generated protobuf files
+*.pb.go
+
+# Air tmp directory
+.air.toml.tmp/
+
+# Build artifacts
+out/
+
+# Docker data volumes
+docker_data/
+docker/data/
+
+# Node modules (if using any JavaScript)
+node_modules/
+
+# Flattened output
+out/
+
+# Generated API docs
+swagger/
+api-docs/
+
+# Redis dump file
+dump.rdb
+
+# Temp files
+*.tmp
+
+.env.dev
+.env.prod
+flatten.sh
+out2.txt

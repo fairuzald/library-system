@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package category;
+
+option go_package = "github.com/fairuzald/library-system/proto/category";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+service CategoryService {
+  rpc GetCategory(GetCategoryRequest) returns (CategoryResponse);
+  rpc ListCategories(ListCategoriesRequest) returns (ListCategoriesResponse);
+  rpc CreateCategory(CreateCategoryRequest) returns (CategoryResponse);
+  rpc UpdateCategory(UpdateCategoryRequest) returns (CategoryResponse);
+  rpc DeleteCategory(DeleteCategoryRequest) returns (google.protobuf.Empty);
+  rpc Health(google.protobuf.Empty) returns (HealthResponse);
+}
+
+message Category {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+  optional string parent_id = 6;
+}
+
+message GetCategoryRequest {
+  string id = 1;
+}
+
+message ListCategoriesRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+  optional string sort_by = 3;
+  optional bool sort_desc = 4;
+}
+
+message CreateCategoryRequest {
+  string name = 1;
+  string description = 2;
+  optional string parent_id = 3;
+}
+
+message UpdateCategoryRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional string parent_id = 4;
+}
+
+message DeleteCategoryRequest {
+  string id = 1;
+}
+
+message CategoryResponse {
+  Category category = 1;
+}
+
+message ListCategoriesResponse {
+  repeated Category categories = 1;
+  int64 total_items = 2;
+  int32 total_pages = 3;
+  int32 current_page = 4;
+  int32 page_size = 5;
+}
+
+message HealthResponse {
+  string status = 1;
+  string version = 2;
+}

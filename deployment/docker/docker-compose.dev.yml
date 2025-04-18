@@ -1,0 +1,290 @@
+version: "3.8"
+
+services:
+  api-gateway:
+    build:
+      context: ../../
+      dockerfile: api-gateway/Dockerfile.dev
+    ports:
+      - "${API_GATEWAY_PORT:-8000}:${API_GATEWAY_SERVER_PORT:-8000}"
+    environment:
+      - APP_NAME=${API_GATEWAY_NAME:-api-gateway}
+      - APP_ENV=${APP_ENV:-development}
+      - SERVER_PORT=${API_GATEWAY_SERVER_PORT:-8000}
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      # Rate limiting configuration
+      - RATE_LIMIT_IP=${RATE_LIMIT_IP:-20}
+      - RATE_LIMIT_IP_BURST=${RATE_LIMIT_IP_BURST:-40}
+      - RATE_LIMIT_GLOBAL=${RATE_LIMIT_GLOBAL:-200}
+      - RATE_LIMIT_GLOBAL_BURST=${RATE_LIMIT_GLOBAL_BURST:-400}
+      # Logging configuration
+      - LOG_JSON=${LOG_JSON:-false}
+      # Service URLs
+      - BOOK_SERVICE_HTTP_URL=${BOOK_SERVICE_HOST:-book-service}:${BOOK_SERVICE_HTTP_PORT:-8080}
+      - CATEGORY_SERVICE_HTTP_URL=${CATEGORY_SERVICE_HOST:-category-service}:${CATEGORY_SERVICE_HTTP_PORT:-8081}
+      - USER_SERVICE_HTTP_URL=${USER_SERVICE_HOST:-user-service}:${USER_SERVICE_HTTP_PORT:-8082}
+      - BOOK_SERVICE_GRPC_URL=${BOOK_SERVICE_HOST:-book-service}:${BOOK_SERVICE_GRPC_PORT:-50051}
+      - CATEGORY_SERVICE_GRPC_URL=${CATEGORY_SERVICE_HOST:-category-service}:${CATEGORY_SERVICE_GRPC_PORT:-50052}
+      - USER_SERVICE_GRPC_URL=${USER_SERVICE_HOST:-user-service}:${USER_SERVICE_GRPC_PORT:-50053}
+      # For backward compatibility during transition
+      - BOOK_SERVICE_URL=${BOOK_SERVICE_HOST:-book-service}:${BOOK_SERVICE_HTTP_PORT:-8080}
+      - CATEGORY_SERVICE_URL=${CATEGORY_SERVICE_HOST:-category-service}:${CATEGORY_SERVICE_HTTP_PORT:-8081}
+      - USER_SERVICE_URL=${USER_SERVICE_HOST:-user-service}:${USER_SERVICE_HTTP_PORT:-8082}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION_HOURS=${JWT_EXPIRATION_HOURS:-24}
+    volumes:
+      - ../../:/app # Volume mount the entire project root
+      - go-modules:/go/pkg/mod
+    depends_on:
+      - book-service
+      - category-service
+      - user-service
+    restart: unless-stopped
+    networks:
+      - library-network
+    command: air -c /app/.air.toml -d # Use absolute path
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:${API_GATEWAY_SERVER_PORT:-8000}/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  book-service:
+    build:
+      context: ../../
+      dockerfile: services/book-service/Dockerfile.dev
+    ports:
+      - "${BOOK_HTTP_EXPOSE_PORT:-8080}:${BOOK_SERVICE_HTTP_PORT:-8080}"
+      - "${BOOK_GRPC_EXPOSE_PORT:-50051}:${BOOK_SERVICE_GRPC_PORT:-50051}"
+    environment:
+      - APP_NAME=${BOOK_SERVICE_NAME:-book-service}
+      - APP_ENV=${APP_ENV:-development}
+      - SERVER_PORT=${BOOK_SERVICE_HTTP_PORT:-8080}
+      - GRPC_PORT=${BOOK_SERVICE_GRPC_PORT:-50051}
+      - DB_HOST=${BOOK_DB_HOST:-book-db}
+      - DB_PORT=${BOOK_DB_PORT:-5432}
+      - DB_NAME=${BOOK_DB_NAME:-book_db}
+      - DB_USER=${BOOK_DB_USER}
+      - DB_PASSWORD=${BOOK_DB_PASSWORD}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - LOG_JSON=${LOG_JSON:-false}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION_HOURS=${JWT_EXPIRATION_HOURS:-24}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    volumes:
+      - ../../:/app # Volume mount the entire project root
+      - go-modules:/go/pkg/mod
+    depends_on:
+      - book-db
+      - redis
+    restart: unless-stopped
+    networks:
+      - library-network
+    command: air -c /app/.air.book.toml -d # Use absolute path
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:${BOOK_SERVICE_HTTP_PORT:-8080}/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  category-service:
+    build:
+      context: ../../
+      dockerfile: services/category-service/Dockerfile.dev
+    ports:
+      - "${CATEGORY_HTTP_EXPOSE_PORT:-8081}:${CATEGORY_SERVICE_HTTP_PORT:-8081}"
+      - "${CATEGORY_GRPC_EXPOSE_PORT:-50052}:${CATEGORY_SERVICE_GRPC_PORT:-50052}"
+    environment:
+      - APP_NAME=${CATEGORY_SERVICE_NAME:-category-service}
+      - APP_ENV=${APP_ENV:-development}
+      - SERVER_PORT=${CATEGORY_SERVICE_HTTP_PORT:-8081}
+      - GRPC_PORT=${CATEGORY_SERVICE_GRPC_PORT:-50052}
+      - DB_HOST=${CATEGORY_DB_HOST:-category-db}
+      - DB_PORT=${CATEGORY_DB_PORT:-5432}
+      - DB_NAME=${CATEGORY_DB_NAME:-category_db}
+      - DB_USER=${CATEGORY_DB_USER}
+      - DB_PASSWORD=${CATEGORY_DB_PASSWORD}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - LOG_JSON=${LOG_JSON:-false}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION_HOURS=${JWT_EXPIRATION_HOURS:-24}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    volumes:
+      - ../../:/app # Volume mount the entire project root
+      - go-modules:/go/pkg/mod
+    depends_on:
+      - category-db
+      - redis
+    restart: unless-stopped
+    networks:
+      - library-network
+    command: air -c /app/.air.category.toml -d # Use absolute path
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:${CATEGORY_SERVICE_HTTP_PORT:-8081}/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  user-service:
+    build:
+      context: ../../
+      dockerfile: services/user-service/Dockerfile.dev
+    ports:
+      - "${USER_HTTP_EXPOSE_PORT:-8082}:${USER_SERVICE_HTTP_PORT:-8082}"
+      - "${USER_GRPC_EXPOSE_PORT:-50053}:${USER_SERVICE_GRPC_PORT:-50053}"
+    environment:
+      - APP_NAME=${USER_SERVICE_NAME:-user-service}
+      - APP_ENV=${APP_ENV:-development}
+      - SERVER_PORT=${USER_SERVICE_HTTP_PORT:-8082}
+      - GRPC_PORT=${USER_SERVICE_GRPC_PORT:-50053}
+      - DB_HOST=${USER_DB_HOST:-user-db}
+      - DB_PORT=${USER_DB_PORT:-5432}
+      - DB_NAME=${USER_DB_NAME:-user_db}
+      - DB_USER=${USER_DB_USER}
+      - DB_PASSWORD=${USER_DB_PASSWORD}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - LOG_JSON=${LOG_JSON:-false}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION_HOURS=${JWT_EXPIRATION_HOURS:-24}
+      - ACCESS_TOKEN_EXPIRY=${ACCESS_TOKEN_EXPIRY:-15m}
+      - REFRESH_TOKEN_EXPIRY=${REFRESH_TOKEN_EXPIRY:-168h}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    volumes:
+      - ../../:/app # Volume mount the entire project root
+      - go-modules:/go/pkg/mod
+    depends_on:
+      - user-db
+      - redis
+    restart: unless-stopped
+    networks:
+      - library-network
+    command: air -c /app/.air.user.toml -d # Use absolute path
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:${USER_SERVICE_HTTP_PORT:-8082}/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  book-db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=${BOOK_DB_NAME:-book_db}
+      - POSTGRES_USER=${BOOK_DB_USER}
+      - POSTGRES_PASSWORD=${BOOK_DB_PASSWORD}
+    ports:
+      - "${BOOK_DB_EXPOSE_PORT:-5432}:5432"
+    volumes:
+      - book-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - library-network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${BOOK_DB_USER}"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  category-db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=${CATEGORY_DB_NAME:-category_db}
+      - POSTGRES_USER=${CATEGORY_DB_USER}
+      - POSTGRES_PASSWORD=${CATEGORY_DB_PASSWORD}
+    ports:
+      - "${CATEGORY_DB_EXPOSE_PORT:-5433}:5432"
+    volumes:
+      - category-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - library-network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${CATEGORY_DB_USER}"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  user-db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=${USER_DB_NAME:-user_db}
+      - POSTGRES_USER=${USER_DB_USER}
+      - POSTGRES_PASSWORD=${USER_DB_PASSWORD}
+    ports:
+      - "${USER_DB_EXPOSE_PORT:-5437}:5432" # Using 5437 as requested for user DB
+    volumes:
+      - user-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - library-network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${USER_DB_USER}"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_EXPOSE_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - library-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  book-db-data:
+  category-db-data:
+  user-db-data:
+  redis-data:
+  go-modules:
+
+networks:
+  library-network:
+    driver: bridge
