@@ -1,4 +1,4 @@
-.PHONY: dev prod down-dev down-prod clean build push help init-env logs-api logs-book logs-category logs-user logs-all logs-api-f logs-book-f logs-category-f logs-user-f logs-all-f install-dbmate migrate-dev migrate-prod migrate-create
+.PHONY: dev prod down-dev down-prod clean build push help init-env logs-api logs-book logs-category logs-user logs-all logs-api-f logs-book-f logs-category-f logs-user-f logs-all-f install-dbmate migrate-dev migrate-prod migrate-create proto
 
 DOCKER_COMPOSE_DEV = docker-compose -f deployment/docker/docker-compose.dev.yml --env-file .env.dev
 DOCKER_COMPOSE_PROD = docker-compose -f deployment/docker/docker-compose.yml --env-file .env.prod
@@ -152,3 +152,9 @@ sql-category:
 sql-user:
 	@echo "Connecting to user database using Docker..."
 	@$(DOCKER_COMPOSE_DEV) exec user-db psql -U $(USER_DB_USER) -d $(USER_DB_NAME)
+
+proto:
+	@echo "generate proto..."
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative proto/user/user.proto
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative proto/book/book.proto
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative proto/category/category.proto

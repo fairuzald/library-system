@@ -32,7 +32,9 @@ func RespondWithError(w http.ResponseWriter, status int, message string, err err
 		errorResponse.Error = err.Error()
 	}
 
-	RespondWithJSON(w, status, errorResponse)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(errorResponse)
 }
 
 // RespondWithSuccess writes a success response

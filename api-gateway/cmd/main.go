@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
-	"net/http/httputil"
 	"os"
 	"os/signal"
 	"strconv"
@@ -80,9 +80,9 @@ func main() {
 	)
 
 	router.Use(
-		recoveryMiddleware.Middleware, // First recover from panics
-		requestLogger.Middleware,      // Then log the request
-		rateLimiter.Middleware,        // Then apply rate limiting
+		recoveryMiddleware.Middleware,
+		requestLogger.Middleware,
+		rateLimiter.Middleware,
 	)
 
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -114,23 +114,7 @@ func main() {
 		json.NewEncoder(w).Encode(response)
 	}).Methods("GET")
 
-	bookServiceProxy := createServiceProxy(cfg.BookServiceHTTPURL, log)
-	categoryServiceProxy := createServiceProxy(cfg.CategoryServiceHTTPURL, log)
-	userServiceProxy := createServiceProxy(cfg.UserServiceHTTPURL, log)
-
-	apiRouter := router.PathPrefix("/api").Subrouter()
-
-	bookRouter := apiRouter.PathPrefix("/books").Subrouter()
-	bookRouter.PathPrefix("").Handler(bookServiceProxy)
-
-	categoryRouter := apiRouter.PathPrefix("/categories").Subrouter()
-	categoryRouter.PathPrefix("").Handler(categoryServiceProxy)
-
-	userRouter := apiRouter.PathPrefix("/users").Subrouter()
-	userRouter.PathPrefix("").Handler(userServiceProxy)
-
-	authRouter := apiRouter.PathPrefix("/auth").Subrouter()
-	authRouter.PathPrefix("").Handler(userServiceProxy)
+	setupServiceProxies(router, cfg, log)
 
 	corsMiddleware := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
@@ -172,69 +156,6 @@ func main() {
 	log.Info("Server exited properly")
 }
 
-// createServiceProxy creates a new reverse proxy for the specified service
-func createServiceProxy(serviceURL string, log *logger.Logger) http.Handler {
-	if serviceURL == "" {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.Error(w, "Service not configured", http.StatusServiceUnavailable)
-		})
-	}
-
-	target := serviceURL
-	if !strings.HasPrefix(target, "http://") && !strings.HasPrefix(target, "https://") {
-		target = "http://" + target
-	}
-
-	proxy := &httputil.ReverseProxy{
-		Director: func(req *http.Request) {
-			targetURL := fmt.Sprintf("%s%s", target, req.URL.Path)
-			if req.URL.RawQuery != "" {
-				targetURL = fmt.Sprintf("%s?%s", targetURL, req.URL.RawQuery)
-			}
-
-			parsedURL, err := http.NewRequest(req.Method, targetURL, req.Body)
-			if err != nil {
-				log.Error("Failed to create proxy request",
-					zap.Error(err),
-					zap.String("original_url", req.URL.String()),
-					zap.String("target_url", targetURL),
-				)
-				return
-			}
-
-			for key, values := range req.Header {
-				for _, value := range values {
-					parsedURL.Header.Add(key, value)
-				}
-			}
-
-			req.URL = parsedURL.URL
-			req.Host = parsedURL.Host
-
-			req.Header.Set("X-Forwarded-Host", req.Host)
-			req.Header.Set("X-Forwarded-For", req.RemoteAddr)
-			req.Header.Set("X-Forwarded-Proto", "http")
-			req.Header.Set("X-Gateway", "library-system-api-gateway")
-
-			log.Debug("Proxying request",
-				zap.String("method", req.Method),
-				zap.String("original_url", req.URL.String()),
-				zap.String("target_url", targetURL),
-			)
-		},
-		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			log.Error("Proxy error",
-				zap.Error(err),
-				zap.String("url", r.URL.String()),
-				zap.String("method", r.Method),
-			)
-			http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
-		},
-	}
-
-	return proxy
-}
-
 func checkServiceHealth(serviceURL string, log *logger.Logger) string {
 	if serviceURL == "" {
 		return "unknown"
@@ -270,6 +191,120 @@ func checkServiceHealth(serviceURL string, log *logger.Logger) string {
 	return "ok"
 }
 
+func setupServiceProxies(router *mux.Router, cfg *APIGatewayConfig, log *logger.Logger) {
+	apiRouter := router.PathPrefix("/api").Subrouter()
+
+	bookRouter := apiRouter.PathPrefix("/books").Subrouter()
+	bookProxy := createServiceProxy(cfg.BookServiceHTTPURL, log)
+	bookRouter.PathPrefix("").Handler(bookProxy)
+
+	categoryRouter := apiRouter.PathPrefix("/categories").Subrouter()
+	categoryProxy := createServiceProxy(cfg.CategoryServiceHTTPURL, log)
+	categoryRouter.PathPrefix("").Handler(categoryProxy)
+
+	userRouter := apiRouter.PathPrefix("/users").Subrouter()
+	userProxy := createServiceProxy(cfg.UserServiceHTTPURL, log)
+	userRouter.PathPrefix("").Handler(userProxy)
+
+	authRouter := apiRouter.PathPrefix("/auth").Subrouter()
+	authRouter.PathPrefix("").Handler(userProxy)
+}
+
+func createServiceProxy(serviceURL string, log *logger.Logger) http.Handler {
+	if serviceURL == "" {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "Service not configured", http.StatusServiceUnavailable)
+		})
+	}
+
+	target := serviceURL
+	if !strings.HasPrefix(target, "http://") && !strings.HasPrefix(target, "https://") {
+		target = "http://" + target
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		targetURL := fmt.Sprintf("%s%s", target, r.URL.Path)
+		if r.URL.RawQuery != "" {
+			targetURL = fmt.Sprintf("%s?%s", targetURL, r.URL.RawQuery)
+		}
+
+		proxyReq, err := http.NewRequest(r.Method, targetURL, r.Body)
+		if err != nil {
+			log.Error("Failed to create proxy request",
+				zap.Error(err),
+				zap.String("original_url", r.URL.String()),
+				zap.String("target_url", targetURL),
+			)
+			http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		for key, values := range r.Header {
+			for _, value := range values {
+				proxyReq.Header.Add(key, value)
+			}
+		}
+
+		proxyReq.Header.Set("X-Forwarded-Host", r.Host)
+		proxyReq.Header.Set("X-Forwarded-For", r.RemoteAddr)
+		proxyReq.Header.Set("X-Gateway", "library-system-api-gateway")
+
+		client := &http.Client{}
+		resp, err := client.Do(proxyReq)
+		if err != nil {
+			log.Error("Proxy error",
+				zap.Error(err),
+				zap.String("url", r.URL.String()),
+				zap.String("method", r.Method),
+			)
+			http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		defer resp.Body.Close()
+
+		for k, vv := range resp.Header {
+			for _, v := range vv {
+				w.Header().Add(k, v)
+			}
+		}
+
+		w.WriteHeader(resp.StatusCode)
+
+		if _, err := copyBuffer(w, resp.Body); err != nil {
+			log.Error("Failed to copy response body",
+				zap.Error(err),
+				zap.String("url", r.URL.String()),
+			)
+		}
+	})
+}
+
+func copyBuffer(dst http.ResponseWriter, src io.ReadCloser) (int64, error) {
+	var buf = make([]byte, 32*1024)
+	var written int64
+	for {
+		nr, err := src.Read(buf)
+		if nr > 0 {
+			nw, ew := dst.Write(buf[0:nr])
+			if nw > 0 {
+				written += int64(nw)
+			}
+			if ew != nil {
+				return written, ew
+			}
+			if nr != nw {
+				return written, io.ErrShortWrite
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				return written, nil
+			}
+			return written, err
+		}
+	}
+}
+
 func loadAPIGatewayConfig() (*APIGatewayConfig, error) {
 	appName := os.Getenv("APP_NAME")
 	if appName == "" {
@@ -288,26 +323,6 @@ func loadAPIGatewayConfig() (*APIGatewayConfig, error) {
 	bookServiceGRPCURL := os.Getenv("BOOK_SERVICE_GRPC_URL")
 	categoryServiceGRPCURL := os.Getenv("CATEGORY_SERVICE_GRPC_URL")
 	userServiceGRPCURL := os.Getenv("USER_SERVICE_GRPC_URL")
-
-	appEnv := os.Getenv("APP_ENV")
-	if appEnv == "" {
-		appEnv = "development"
-	}
-
-	serverPort := os.Getenv("SERVER_PORT")
-	if serverPort == "" {
-		serverPort = "8000"
-	}
-
-	logLevel := os.Getenv("LOG_LEVEL")
-	if logLevel == "" {
-		logLevel = "info"
-	}
-
-	rateLimitIP := getEnvAsFloat("RATE_LIMIT_IP", 10)              // 10 req/s per IP
-	rateLimitIPBurst := getEnvAsInt("RATE_LIMIT_IP_BURST", 20)     // 20 burst per IP
-	rateLimitGlobal := getEnvAsFloat("RATE_LIMIT_GLOBAL", 100)     // 100 req/s global
-	rateLimitGBurst := getEnvAsInt("RATE_LIMIT_GLOBAL_BURST", 200) // 200 burst global
 
 	if bookServiceHTTPURL == "" {
 		bookServiceHTTPURL = os.Getenv("BOOK_SERVICE_URL")
@@ -339,6 +354,41 @@ func loadAPIGatewayConfig() (*APIGatewayConfig, error) {
 		}
 	}
 
+	appEnv := os.Getenv("APP_ENV")
+	if appEnv == "" {
+		appEnv = "development"
+	}
+
+	serverPort := os.Getenv("SERVER_PORT")
+	if serverPort == "" {
+		serverPort = "8000"
+	}
+
+	logLevel := os.Getenv("LOG_LEVEL")
+	if logLevel == "" {
+		logLevel = "info"
+	}
+
+	rateLimitIP, err := getEnvAsFloat("RATE_LIMIT_IP", 10)
+	if err != nil {
+		return nil, err
+	}
+
+	rateLimitIPBurst, err := getEnvAsInt("RATE_LIMIT_IP_BURST", 20)
+	if err != nil {
+		return nil, err
+	}
+
+	rateLimitGlobal, err := getEnvAsFloat("RATE_LIMIT_GLOBAL", 100)
+	if err != nil {
+		return nil, err
+	}
+
+	rateLimitGBurst, err := getEnvAsInt("RATE_LIMIT_GLOBAL_BURST", 200)
+	if err != nil {
+		return nil, err
+	}
+
 	return &APIGatewayConfig{
 		AppName:                appName,
 		AppEnv:                 appEnv,
@@ -358,30 +408,30 @@ func loadAPIGatewayConfig() (*APIGatewayConfig, error) {
 	}, nil
 }
 
-func getEnvAsInt(key string, defaultValue int) int {
+func getEnvAsInt(key string, defaultValue int) (int, error) {
 	value := os.Getenv(key)
 	if value == "" {
-		return defaultValue
+		return defaultValue, nil
 	}
 
 	intValue, err := strconv.Atoi(value)
 	if err != nil {
-		return defaultValue
+		return 0, fmt.Errorf("invalid value for %s: %v", key, err)
 	}
 
-	return intValue
+	return intValue, nil
 }
 
-func getEnvAsFloat(key string, defaultValue float64) float64 {
+func getEnvAsFloat(key string, defaultValue float64) (float64, error) {
 	value := os.Getenv(key)
 	if value == "" {
-		return defaultValue
+		return defaultValue, nil
 	}
 
 	floatValue, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		return defaultValue
+		return 0, fmt.Errorf("invalid value for %s: %v", key, err)
 	}
 
-	return floatValue
+	return floatValue, nil
 }

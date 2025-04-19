@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"strconv"
+
 	"github.com/google/uuid"
 )
 
@@ -63,4 +65,29 @@ func Unique[T comparable](slice []T) []T {
 		}
 	}
 	return uniqueSlice
+}
+
+// ParseInt parses a string to an integer with error handling
+func ParseInt(s string) (int, error) {
+	return strconv.Atoi(s)
+}
+
+// ParseBool parses a string to a boolean with error handling
+func ParseBool(s string) (bool, error) {
+	return strconv.ParseBool(s)
+}
+
+// StringPtr returns a pointer to the string value
+func StringPtr(s string) *string {
+	return &s
+}
+
+// IntPtr returns a pointer to the int value
+func IntPtr(i int) *int {
+	return &i
+}
+
+// BoolPtr returns a pointer to the bool value
+func BoolPtr(b bool) *bool {
+	return &b
 }

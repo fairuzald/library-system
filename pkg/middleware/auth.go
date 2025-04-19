@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fairuzald/library-system/pkg/utils"
 	"github.com/golang-jwt/jwt/v4"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -89,19 +90,19 @@ func (j *JWTAuth) HTTPMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get(AuthHeaderKey)
 		if authHeader == "" {
-			http.Error(w, "authorization header is required", http.StatusUnauthorized)
+			utils.RespondWithError(w, http.StatusUnauthorized, "authorization header is required", nil)
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != BearerSchema {
-			http.Error(w, "invalid authorization header format", http.StatusUnauthorized)
+			utils.RespondWithError(w, http.StatusUnauthorized, "invalid authorization header format", nil)
 			return
 		}
 
 		claims, err := j.ValidateToken(parts[1])
 		if err != nil {
-			http.Error(w, "invalid or expired token", http.StatusUnauthorized)
+			utils.RespondWithError(w, http.StatusUnauthorized, "invalid or expired token", err)
 			return
 		}
 

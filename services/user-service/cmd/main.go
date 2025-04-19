@@ -15,7 +15,8 @@ import (
 	"github.com/fairuzald/library-system/pkg/config"
 	"github.com/fairuzald/library-system/pkg/logger"
 	"github.com/fairuzald/library-system/pkg/middleware"
-	"github.com/fairuzald/library-system/services/user-service/internal/handlers"
+	"github.com/fairuzald/library-system/services/user-service/internal/module"
+	routes "github.com/fairuzald/library-system/services/user-service/internal/route"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
@@ -27,13 +28,11 @@ import (
 )
 
 func main() {
-	// Load configuration
 	cfg, err := config.LoadConfig(".env")
 	if err != nil {
 		panic(fmt.Sprintf("Error loading config: %v", err))
 	}
 
-	// Initialize logger
 	logConfig := config.LoadLoggingConfig()
 	log := logger.New(logger.Config{
 		Level:      logConfig.Level,
@@ -48,25 +47,21 @@ func main() {
 		zap.String("version", "1.0.0"),
 	)
 
-	// Connect to the database
 	db, err := sql.Open("postgres", cfg.GetDSN())
 	if err != nil {
 		log.Fatal("Failed to connect to database", zap.Error(err))
 	}
 	defer db.Close()
 
-	// Set connection pool parameters
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
-	// Check database connection
 	if err := db.Ping(); err != nil {
 		log.Fatal("Failed to ping database", zap.Error(err))
 	}
 	log.Info("Successfully connected to database", zap.String("database", cfg.DBName))
 
-	// Initialize Redis client
 	redisClient, err := cache.NewRedis(&cache.RedisConfig{
 		Host:     cfg.RedisHost,
 		Port:     cfg.RedisPort,
@@ -81,29 +76,44 @@ func main() {
 		defer redisClient.Close()
 	}
 
-	// Initialize JWT auth
-	jwtAuth := middleware.NewJWTAuth(cfg.JWTSecret, time.Duration(cfg.JWTExpirationHours)*time.Hour)
+	accessTokenExpiry := cfg.AccessTokenExpiry
+	refreshTokenExpiry := cfg.RefreshTokenExpiry
+	if accessTokenExpiry == 0 {
+		accessTokenExpiry = 15 * time.Minute
+	}
+	if refreshTokenExpiry == 0 {
+		refreshTokenExpiry = 7 * 24 * time.Hour // 1 week
+	}
 
-	healthHandler := handlers.NewHealthHandler(db, log)
+	userModule, err := module.New(
+		db,
+		redisClient,
+		cfg.JWTSecret,
+		accessTokenExpiry,
+		refreshTokenExpiry,
+		log,
+	)
+	if err != nil {
+		log.Fatal("Failed to initialize user service module", zap.Error(err))
+	}
 
-	// Set up HTTP server
 	router := mux.NewRouter()
 
-	// Add request logger and recovery middleware
 	requestLogger := middleware.NewRequestLogger(log)
 	recoveryMiddleware := middleware.NewRecoveryMiddleware(log)
 	router.Use(recoveryMiddleware.Middleware, requestLogger.Middleware)
 
-	// Health endpoint
-	router.HandleFunc("/health", healthHandler.HandleHealth).Methods("GET")
+	router.HandleFunc("/health", userModule.HealthHandler.HandleHealth).Methods("GET")
 
-	// API router
-	apiRouter := router.PathPrefix("/api").Subrouter()
+	routes.SetupRoutes(
+		router,
+		userModule.UserHandler,
+		userModule.AuthHandler,
+		userModule.JWTAuth,
+		log,
+		cfg,
+	)
 
-	// Auth endpoints (no auth required)
-	apiRouter.PathPrefix("/auth").Subrouter()
-
-	// Create HTTP server
 	httpServer := &http.Server{
 		Addr:         ":" + cfg.ServerPort,
 		Handler:      router,
@@ -112,17 +122,16 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Set up gRPC server with interceptors for logging and recovery
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			middleware.UnaryRecoveryInterceptor(log),
 			middleware.UnaryLoggingInterceptor(log),
-			jwtAuth.UnaryInterceptor(),
+			userModule.JWTAuth.UnaryInterceptor(),
 		),
 		grpc.ChainStreamInterceptor(
 			middleware.StreamRecoveryInterceptor(log),
 			middleware.StreamLoggingInterceptor(log),
-			jwtAuth.StreamInterceptor(),
+			userModule.JWTAuth.StreamInterceptor(),
 		),
 		grpc.KeepaliveParams(keepalive.ServerParameters{
 			MaxConnectionIdle:     15 * time.Minute,
@@ -133,19 +142,14 @@ func main() {
 		}),
 	)
 
-	// Register user service
-	// userProtoService := grpc_handlers.NewUserService(userService, log)
-	// user.RegisterUserServiceServer(grpcServer, userProtoService)
+	userModule.RegisterGRPCHandlers(grpcServer)
 
-	// Register health service
 	healthServer := health.NewServer()
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
 	healthServer.SetServingStatus("user-service", grpc_health_v1.HealthCheckResponse_SERVING)
 
-	// Enable reflection for grpcurl
 	reflection.Register(grpcServer)
 
-	// Start HTTP server in a goroutine
 	go func() {
 		log.Info("Starting HTTP server", zap.String("port", cfg.ServerPort))
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -153,7 +157,6 @@ func main() {
 		}
 	}()
 
-	// Start gRPC server in a goroutine
 	go func() {
 		grpcAddr := fmt.Sprintf(":%s", cfg.GRPCPort)
 		listener, err := net.Listen("tcp", grpcAddr)
@@ -167,33 +170,29 @@ func main() {
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shut down the server
+	userModule.StartBackgroundTasks()
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	log.Info("Shutting down servers...")
 
-	// Change health check status to NOT_SERVING
 	healthServer.SetServingStatus("user-service", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 
-	// Create a deadline for server shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Shutdown HTTP server
 	if err := httpServer.Shutdown(ctx); err != nil {
 		log.Error("Server forced to shutdown", zap.Error(err))
 	}
 
-	// Gracefully stop gRPC server
 	stopped := make(chan struct{})
 	go func() {
 		grpcServer.GracefulStop()
 		close(stopped)
 	}()
 
-	// Wait for gRPC server to stop or timeout
 	select {
 	case <-ctx.Done():
 		log.Warn("Timeout during gRPC server shutdown, forcing stop")

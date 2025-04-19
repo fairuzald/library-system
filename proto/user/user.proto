@@ -8,6 +8,7 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 
 service UserService {
+  // User Management
   rpc GetUser(GetUserRequest) returns (UserResponse);
   rpc GetUserByEmail(GetUserByEmailRequest) returns (UserResponse);
   rpc GetUserByUsername(GetUserByUsernameRequest) returns (UserResponse);
@@ -16,9 +17,15 @@ service UserService {
   rpc UpdateUser(UpdateUserRequest) returns (UserResponse);
   rpc DeleteUser(DeleteUserRequest) returns (google.protobuf.Empty);
   rpc ChangePassword(ChangePasswordRequest) returns (google.protobuf.Empty);
+
+  // Authentication
   rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Register(RegisterRequest) returns (UserResponse);
   rpc RefreshToken(RefreshTokenRequest) returns (TokenResponse);
   rpc Logout(LogoutRequest) returns (google.protobuf.Empty);
+  rpc RevokeAllTokens(RevokeAllTokensRequest) returns (google.protobuf.Empty);
+
+  // Health Check
   rpc Health(google.protobuf.Empty) returns (HealthResponse);
 }
 
@@ -37,6 +44,7 @@ message User {
   optional google.protobuf.Timestamp last_login = 12;
 }
 
+// User Management Request/Response Messages
 message GetUserRequest {
   string id = 1;
 }
@@ -56,6 +64,7 @@ message ListUsersRequest {
   optional bool sort_desc = 4;
   optional string role = 5;
   optional string status = 6;
+  optional string query = 7; // Search query
 }
 
 message CreateUserRequest {
@@ -91,6 +100,7 @@ message ChangePasswordRequest {
   string new_password = 3;
 }
 
+// Authentication Request/Response Messages
 message LoginRequest {
   string username_or_email = 1;
   string password = 2;
@@ -108,10 +118,6 @@ message RefreshTokenRequest {
   string refresh_token = 1;
 }
 
-message LogoutRequest {
-  string access_token = 1;
-}
-
 message TokenResponse {
   string access_token = 1;
   string refresh_token = 2;
@@ -119,6 +125,25 @@ message TokenResponse {
   int64 expires_in = 4;
 }
 
+message RegisterRequest {
+	string email = 1;
+	string username = 2;
+	string password = 3;
+	string first_name = 4;
+	string last_name = 5;
+	optional string phone = 6;
+	optional string address = 7;
+  }
+
+message LogoutRequest {
+  string refresh_token = 1;
+}
+
+message RevokeAllTokensRequest {
+  string user_id = 1;
+}
+
+// Common Response Messages
 message UserResponse {
   User user = 1;
 }
@@ -134,4 +159,5 @@ message ListUsersResponse {
 message HealthResponse {
   string status = 1;
   string version = 2;
+  google.protobuf.Timestamp timestamp = 3;
 }

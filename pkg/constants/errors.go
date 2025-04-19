@@ -22,4 +22,8 @@ const (
 	ErrCategoryNotFound   = "category not found"
 	ErrUserNotFound       = "user not found"
 	ErrBookNotFound       = "book not found"
+
+	ErrTokenRevoked     = "token has been revoked"
+	ErrTokenBlacklisted = "token is blacklisted"
+	ErrInvalidRole      = "invalid user role"
 )

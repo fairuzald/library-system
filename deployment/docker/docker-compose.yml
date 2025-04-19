@@ -268,7 +268,7 @@ services:
       - POSTGRES_USER=${USER_DB_USER}
       - POSTGRES_PASSWORD=${USER_DB_PASSWORD}
     ports:
-      - "${USER_DB_EXPOSE_PORT:-5437}:5432" # Using 5437 as requested
+      - "${USER_DB_EXPOSE_PORT:-5437}:5432"
     volumes:
       - user-db-data:/var/lib/postgresql/data
     restart: unless-stopped

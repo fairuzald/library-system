@@ -33,7 +33,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRATION_HOURS=${JWT_EXPIRATION_HOURS:-24}
     volumes:
-      - ../../:/app # Volume mount the entire project root
+      - ../../:/app
       - go-modules:/go/pkg/mod
     depends_on:
       - book-service
@@ -42,7 +42,7 @@ services:
     restart: unless-stopped
     networks:
       - library-network
-    command: air -c /app/.air.toml -d # Use absolute path
+    command: air -c /app/.air.toml -d
     healthcheck:
       test:
         [
@@ -82,7 +82,7 @@ services:
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
     volumes:
-      - ../../:/app # Volume mount the entire project root
+      - ../../:/app
       - go-modules:/go/pkg/mod
     depends_on:
       - book-db
@@ -90,7 +90,7 @@ services:
     restart: unless-stopped
     networks:
       - library-network
-    command: air -c /app/.air.book.toml -d # Use absolute path
+    command: air -c /app/.air.book.toml -d
     healthcheck:
       test:
         [
@@ -130,7 +130,7 @@ services:
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
     volumes:
-      - ../../:/app # Volume mount the entire project root
+      - ../../:/app
       - go-modules:/go/pkg/mod
     depends_on:
       - category-db
@@ -138,7 +138,7 @@ services:
     restart: unless-stopped
     networks:
       - library-network
-    command: air -c /app/.air.category.toml -d # Use absolute path
+    command: air -c /app/.air.category.toml -d
     healthcheck:
       test:
         [
@@ -180,7 +180,7 @@ services:
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
     volumes:
-      - ../../:/app # Volume mount the entire project root
+      - ../../:/app
       - go-modules:/go/pkg/mod
     depends_on:
       - user-db
@@ -188,7 +188,7 @@ services:
     restart: unless-stopped
     networks:
       - library-network
-    command: air -c /app/.air.user.toml -d # Use absolute path
+    command: air -c /app/.air.user.toml -d
     healthcheck:
       test:
         [
@@ -249,7 +249,7 @@ services:
       - POSTGRES_USER=${USER_DB_USER}
       - POSTGRES_PASSWORD=${USER_DB_PASSWORD}
     ports:
-      - "${USER_DB_EXPOSE_PORT:-5437}:5432" # Using 5437 as requested for user DB
+      - "${USER_DB_EXPOSE_PORT:-5437}:5432"
     volumes:
       - user-db-data:/var/lib/postgresql/data
     restart: unless-stopped

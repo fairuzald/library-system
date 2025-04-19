@@ -1,29 +1,31 @@
 -- migrate:up
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-CREATE TABLE books (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS books (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255) NOT NULL,
     author VARCHAR(255) NOT NULL,
-    isbn VARCHAR(20) UNIQUE,
-    published_year INT,
-    publisher VARCHAR(255),
+    isbn VARCHAR(20) UNIQUE NOT NULL,
+    published_year INT NOT NULL,
+    publisher VARCHAR(255) NOT NULL,
     description TEXT,
-    language VARCHAR(50) DEFAULT 'English',
-    page_count INT,
-    status VARCHAR(20) DEFAULT 'available',
-    cover_image VARCHAR(255),
+    language VARCHAR(50) NOT NULL,
+    page_count INT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'available',
+    cover_image TEXT,
     average_rating FLOAT DEFAULT 0,
-    quantity INT DEFAULT 1,
-    available_quantity INT DEFAULT 1,
+    quantity INT NOT NULL DEFAULT 1,
+    available_quantity INT NOT NULL DEFAULT 1,
+    category_ids TEXT[],
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMP
 );
 
-CREATE INDEX idx_books_title ON books(title);
-CREATE INDEX idx_books_author ON books(author);
-CREATE INDEX idx_books_isbn ON books(isbn);
-CREATE INDEX idx_books_status ON books(status);
+-- Add indexes
+CREATE INDEX IF NOT EXISTS idx_books_title ON books(title);
+CREATE INDEX IF NOT EXISTS idx_books_author ON books(author);
+CREATE INDEX IF NOT EXISTS idx_books_isbn ON books(isbn);
+CREATE INDEX IF NOT EXISTS idx_books_status ON books(status);
+CREATE INDEX IF NOT EXISTS idx_books_deleted_at ON books(deleted_at);
 
 -- migrate:down
 DROP TABLE IF EXISTS books;

@@ -1,4 +1,3 @@
-// pkg/models/base.go
 package models
 
 import (
