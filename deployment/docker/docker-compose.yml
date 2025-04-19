@@ -40,18 +40,6 @@ services:
         limits:
           cpus: "${API_GATEWAY_CPU_LIMIT:-0.5}"
           memory: "${API_GATEWAY_MEM_LIMIT:-512M}"
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "http://localhost:${API_GATEWAY_SERVER_PORT:-8000}/health",
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
 
   book-service:
     image: ${REGISTRY:-fairuzald}/library-system-book-service:${VERSION:-latest}
@@ -92,18 +80,6 @@ services:
         limits:
           cpus: "${BOOK_SERVICE_CPU_LIMIT:-0.5}"
           memory: "${BOOK_SERVICE_MEM_LIMIT:-512M}"
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "http://localhost:${BOOK_SERVICE_HTTP_PORT:-8080}/health",
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
 
   category-service:
     image: ${REGISTRY:-fairuzald}/library-system-category-service:${VERSION:-latest}
@@ -144,18 +120,6 @@ services:
         limits:
           cpus: "${CATEGORY_SERVICE_CPU_LIMIT:-0.5}"
           memory: "${CATEGORY_SERVICE_MEM_LIMIT:-512M}"
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "http://localhost:${CATEGORY_SERVICE_HTTP_PORT:-8081}/health",
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
 
   user-service:
     image: ${REGISTRY:-fairuzald}/library-system-user-service:${VERSION:-latest}
@@ -198,18 +162,6 @@ services:
         limits:
           cpus: "${USER_SERVICE_CPU_LIMIT:-0.5}"
           memory: "${USER_SERVICE_MEM_LIMIT:-512M}"
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "http://localhost:${USER_SERVICE_HTTP_PORT:-8082}/health",
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
 
   book-db:
     image: postgres:15-alpine

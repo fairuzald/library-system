@@ -1,0 +1,16 @@
+{
+  "name": "library-system",
+  "version": "1.0.0",
+  "description": "A project that converts Postman collections to OpenAPI format",
+  "main": "es.js",
+  "type": "module",
+  "scripts": {
+    "start": "node scripts.js"
+  },
+  "keywords": [],
+  "author": "Moh Fairuz Alauddin Yahya",
+  "license": "MIT",
+  "dependencies": {
+    "postman-to-openapi": "^3.0.0"
+  }
+}

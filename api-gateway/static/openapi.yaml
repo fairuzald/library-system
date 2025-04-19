@@ -1,0 +1,656 @@
+openapi: 3.0.0
+info:
+  title: Library Management System API
+  description: >-
+    A complete API collection for the Library Management System with User, Book,
+    and Category microservices
+  version: 1.0.0
+servers:
+  - url: http://{{api_url}}
+  - url: http://{{user_service_url}}
+  - url: http://{{book_service_url}}
+  - url: http://{{category_service_url}}
+tags:
+  - name: Authentication
+    description: User authentication endpoints
+  - name: Users
+    description: User management endpoints
+  - name: Categories
+    description: Book category management endpoints
+  - name: Books
+    description: Book management endpoints
+  - name: Health Checks
+    description: Health check endpoints for each service
+paths:
+  /api/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register
+      requestBody:
+        content:
+          '*/*':
+            schema:
+              type: string
+              example: >-
+                "{\n  \"email\": \"user@example.com\",\n  \"username\":
+                \"testuser\",\n  \"password\": \"Password123\",\n 
+                \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n 
+                \"phone\": \"123-456-7890\",\n  \"address\": \"123 Test St\"\n}"
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login
+      requestBody:
+        content:
+          '*/*':
+            schema:
+              type: string
+              example: >-
+                "{\n  \"username_or_email\": \"testuser\",\n  \"password\":
+                \"Password123\"\n}"
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh Token
+      requestBody:
+        content:
+          '*/*':
+            schema:
+              type: string
+              example: '"{\n  \"refresh_token\": \"{{REFRESH_TOKEN}}\"\n}"'
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout
+      requestBody:
+        content: {}
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{ACCESS_TOKEN}}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/users/me:
+    get:
+      tags:
+        - Users
+      summary: Get Current User
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{ACCESS_TOKEN}}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/users/{USER_ID}:
+    get:
+      tags:
+        - Users
+      summary: Get User By ID
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{ACCESS_TOKEN}}
+        - name: USER_ID
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    put:
+      tags:
+        - Users
+      summary: Update User
+      requestBody:
+        content:
+          '*/*':
+            schema:
+              type: string
+              example: >-
+                "{\n  \"first_name\": \"Updated\",\n  \"last_name\":
+                \"Name\",\n  \"phone\": \"987-654-3210\",\n  \"address\": \"456
+                Updated St\"\n}"
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{ACCESS_TOKEN}}
+        - name: USER_ID
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    delete:
+      tags:
+        - Users
+      summary: Delete User (Admin)
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{ACCESS_TOKEN}}
+        - name: USER_ID
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/users:
+    post:
+      tags:
+        - Users
+      summary: Create User (Admin)
+      requestBody:
+        content:
+          '*/*':
+            schema:
+              type: string
+              example: >-
+                "{\n  \"email\": \"admin@example.com\",\n  \"username\":
+                \"admin\",\n  \"password\": \"AdminPass123\",\n  \"first_name\":
+                \"Admin\",\n  \"last_name\": \"User\",\n  \"role\":
+                \"admin\",\n  \"phone\": \"123-456-7890\",\n  \"address\": \"123
+                Admin St\"\n}"
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{ACCESS_TOKEN}}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    get:
+      tags:
+        - Users
+      summary: List Users (Admin)
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{ACCESS_TOKEN}}
+        - name: page
+          in: query
+          schema:
+            type: integer
+          example: '1'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+          example: '10'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/users/{USER_ID}/password:
+    put:
+      tags:
+        - Users
+      summary: Change Password
+      requestBody:
+        content:
+          '*/*':
+            schema:
+              type: string
+              example: >-
+                "{\n  \"current_password\": \"Password123\",\n 
+                \"new_password\": \"NewPassword123\"\n}"
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{ACCESS_TOKEN}}
+        - name: USER_ID
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/categories:
+    get:
+      tags:
+        - Categories
+      summary: List Categories
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+          example: '1'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+          example: '20'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    post:
+      tags:
+        - Categories
+      summary: Create Category (Admin)
+      requestBody:
+        content:
+          '*/*':
+            schema:
+              type: string
+              example: >-
+                "{\n  \"name\": \"New Category\",\n  \"description\":
+                \"Description of the new category\",\n  \"parent_id\": null\n}"
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{ACCESS_TOKEN}}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/categories/{CATEGORY_ID}:
+    get:
+      tags:
+        - Categories
+      summary: Get Category
+      parameters:
+        - name: CATEGORY_ID
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    put:
+      tags:
+        - Categories
+      summary: Update Category (Admin)
+      requestBody:
+        content:
+          '*/*':
+            schema:
+              type: string
+              example: >-
+                "{\n  \"name\": \"Updated Category Name\",\n  \"description\":
+                \"Updated description\"\n}"
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{ACCESS_TOKEN}}
+        - name: CATEGORY_ID
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    delete:
+      tags:
+        - Categories
+      summary: Delete Category (Admin)
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{ACCESS_TOKEN}}
+        - name: CATEGORY_ID
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/categories/name:
+    get:
+      tags:
+        - Categories
+      summary: Get Category by Name
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+          example: Fiction
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/categories/{CATEGORY_ID}/children:
+    get:
+      tags:
+        - Categories
+      summary: Get Category Children
+      parameters:
+        - name: CATEGORY_ID
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/books:
+    get:
+      tags:
+        - Books
+      summary: List Books
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+          example: '1'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+          example: '10'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    post:
+      tags:
+        - Books
+      summary: Create Book (Admin)
+      requestBody:
+        content:
+          '*/*':
+            schema:
+              type: string
+              example: >-
+                "{\n  \"title\": \"New Book Title\",\n  \"author\": \"Author
+                Name\",\n  \"isbn\": \"9781234567890\",\n  \"published_year\":
+                2022,\n  \"publisher\": \"Publisher Name\",\n  \"description\":
+                \"Book description\",\n  \"category_ids\":
+                [\"50c3ef9e-d1aa-4e88-aa75-7d92c9d11111\"],\n  \"language\":
+                \"English\",\n  \"page_count\": 250,\n  \"cover_image\":
+                \"https://example.com/cover.jpg\",\n  \"quantity\": 5\n}"
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{ACCESS_TOKEN}}
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/books/{BOOK_ID}:
+    get:
+      tags:
+        - Books
+      summary: Get Book
+      parameters:
+        - name: BOOK_ID
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    put:
+      tags:
+        - Books
+      summary: Update Book (Admin)
+      requestBody:
+        content:
+          '*/*':
+            schema:
+              type: string
+              example: >-
+                "{\n  \"title\": \"Updated Book Title\",\n  \"description\":
+                \"Updated description\",\n  \"category_ids\":
+                [\"50c3ef9e-d1aa-4e88-aa75-7d92c9d11111\",
+                \"60c3ef9e-d1aa-4e88-aa75-7d92c9d11111\"],\n  \"status\":
+                \"available\",\n  \"quantity\": 10,\n  \"available_quantity\":
+                8\n}"
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/json
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{ACCESS_TOKEN}}
+        - name: BOOK_ID
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    delete:
+      tags:
+        - Books
+      summary: Delete Book (Admin)
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          example: Bearer {{ACCESS_TOKEN}}
+        - name: BOOK_ID
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/books/isbn:
+    get:
+      tags:
+        - Books
+      summary: Get Book by ISBN
+      parameters:
+        - name: isbn
+          in: query
+          schema:
+            type: integer
+          example: '9780451524935'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/books/search:
+    get:
+      tags:
+        - Books
+      summary: Search Books
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+          example: Orwell
+        - name: page
+          in: query
+          schema:
+            type: integer
+          example: '1'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+          example: '10'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /api/books/category/{CATEGORY_ID}:
+    get:
+      tags:
+        - Books
+      summary: Get Books by Category
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+          example: '1'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+          example: '10'
+        - name: CATEGORY_ID
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /health:
+    get:
+      tags:
+        - Health Checks
+      summary: Category Service Health
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}

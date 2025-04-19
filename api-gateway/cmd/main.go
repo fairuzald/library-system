@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -18,6 +19,9 @@ import (
 	"github.com/fairuzald/library-system/pkg/middleware"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
+	"github.com/swaggest/swgui"
+	v5 "github.com/swaggest/swgui/v5"
+
 	"go.uber.org/zap"
 )
 
@@ -68,6 +72,9 @@ func main() {
 
 	router := mux.NewRouter()
 
+	router.NotFoundHandler = http.HandlerFunc(JSONNotFound)
+	router.MethodNotAllowedHandler = http.HandlerFunc(JSONMethodNotAllowed)
+
 	requestLogger := middleware.NewRequestLogger(log)
 	recoveryMiddleware := middleware.NewRecoveryMiddleware(log)
 
@@ -84,6 +91,100 @@ func main() {
 		requestLogger.Middleware,
 		rateLimiter.Middleware,
 	)
+
+	staticDir := "./static"
+	if _, err := os.Stat(filepath.Join(staticDir, "openapi.json")); err != nil {
+		staticDir, err = filepath.Abs("./static")
+		if err != nil {
+			log.Error("Failed to resolve static directory absolute path", zap.Error(err))
+		}
+
+		alternatePaths := []string{
+			"/app/static",
+			"../static",
+			"../../static",
+			"api-gateway/static",
+		}
+
+		found := false
+		for _, path := range alternatePaths {
+			if _, err := os.Stat(filepath.Join(path, "openapi.json")); err == nil {
+				staticDir = path
+				found = true
+				log.Info("Found openapi.json in alternate path", zap.String("path", staticDir))
+				break
+			}
+		}
+
+		if !found {
+			log.Warn("OpenAPI JSON file not found in any expected directories")
+		}
+	}
+
+	log.Info("Using static directory path", zap.String("path", staticDir))
+	files, err := filepath.Glob(filepath.Join(staticDir, "*"))
+	if err != nil {
+		log.Error("Failed to list files in static directory", zap.Error(err))
+	} else {
+		log.Info("Files in static directory", zap.Strings("files", files))
+	}
+
+	router.HandleFunc("/debug/static", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		fmt.Fprintf(w, "Static directory: %s\n\n", staticDir)
+
+		files, err := filepath.Glob(filepath.Join(staticDir, "*"))
+		if err != nil {
+			fmt.Fprintf(w, "Error listing files: %v\n", err)
+			return
+		}
+
+		fmt.Fprintf(w, "Files in static directory:\n")
+		for _, file := range files {
+			info, err := os.Stat(file)
+			if err != nil {
+				fmt.Fprintf(w, "  %s (error: %v)\n", file, err)
+			} else {
+				fmt.Fprintf(w, "  %s (size: %d, mode: %s)\n", file, info.Size(), info.Mode())
+			}
+		}
+
+		openAPIPath := filepath.Join(staticDir, "openapi.json")
+		content, err := os.ReadFile(openAPIPath)
+		if err != nil {
+			fmt.Fprintf(w, "\nError reading openapi.json: %v\n", err)
+		} else {
+			fmt.Fprintf(w, "\nopenapi.json exists with size: %d bytes\n", len(content))
+		}
+
+		wd, err := os.Getwd()
+		if err != nil {
+			fmt.Fprintf(w, "\nError getting working directory: %v\n", err)
+		} else {
+			fmt.Fprintf(w, "\nWorking directory: %s\n", wd)
+		}
+	}).Methods("GET")
+
+	router.PathPrefix("/static/").Handler(
+		http.StripPrefix("/static/",
+			http.FileServer(http.Dir(staticDir)),
+		),
+	).Methods("GET")
+
+	swaggerConfig := swgui.Config{
+		Title:       "Library API Gateway",
+		SwaggerJSON: "/static/openapi.json",
+		BasePath:    "/docs",
+	}
+
+	log.Info("Swagger configuration",
+		zap.String("title", swaggerConfig.Title),
+		zap.String("swaggerJSON", swaggerConfig.SwaggerJSON),
+		zap.String("basePath", swaggerConfig.BasePath),
+	)
+
+	swaggerHandler := v5.NewHandlerWithConfig(swaggerConfig)
+	router.PathPrefix("/docs").Handler(swaggerHandler)
 
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		response := HealthResponse{
@@ -155,6 +256,27 @@ func main() {
 
 	log.Info("Server exited properly")
 }
+func JSONNotFound(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotFound)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"error":       "Not Found",
+		"status_code": http.StatusNotFound,
+		"message":     "The requested resource was not found",
+		"path":        r.URL.Path,
+	})
+}
+
+func JSONMethodNotAllowed(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusMethodNotAllowed)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"error":       "Method Not Allowed",
+		"status_code": http.StatusMethodNotAllowed,
+		"message":     fmt.Sprintf("Method %s is not allowed for this resource", r.Method),
+		"path":        r.URL.Path,
+	})
+}
 
 func checkServiceHealth(serviceURL string, log *logger.Logger) string {
 	if serviceURL == "" {
@@ -208,6 +330,9 @@ func setupServiceProxies(router *mux.Router, cfg *APIGatewayConfig, log *logger.
 
 	authRouter := apiRouter.PathPrefix("/auth").Subrouter()
 	authRouter.PathPrefix("").Handler(userProxy)
+
+	router.NotFoundHandler = http.HandlerFunc(JSONNotFound)
+	router.MethodNotAllowedHandler = http.HandlerFunc(JSONMethodNotAllowed)
 }
 
 func createServiceProxy(serviceURL string, log *logger.Logger) http.Handler {

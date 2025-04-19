@@ -22,6 +22,12 @@ require (
 )
 
 require (
+	github.com/shurcooL/httpgzip v0.0.0-20190720172056-320755c1c1b0 // indirect
+	github.com/swaggest/swgui v1.8.3 // indirect
+	github.com/vearutop/statigz v1.4.0 // indirect
+)
+
+require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
