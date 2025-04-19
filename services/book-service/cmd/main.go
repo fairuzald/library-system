@@ -15,7 +15,8 @@ import (
 	"github.com/fairuzald/library-system/pkg/config"
 	"github.com/fairuzald/library-system/pkg/logger"
 	"github.com/fairuzald/library-system/pkg/middleware"
-	"github.com/fairuzald/library-system/services/book-service/internal/handlers"
+	"github.com/fairuzald/library-system/services/book-service/internal/module"
+	"github.com/fairuzald/library-system/services/book-service/internal/routes"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
@@ -75,7 +76,18 @@ func main() {
 		defer redisClient.Close()
 	}
 
-	healthHandler := handlers.NewHealthHandler(db, log)
+	// Create the module instance
+	bookModule, err := module.New(
+		db,
+		redisClient,
+		cfg.JWTSecret,
+		cfg.CategoryServiceURL,
+		log,
+	)
+	if err != nil {
+		log.Fatal("Failed to initialize book service module", zap.Error(err))
+	}
+	defer bookModule.Close()
 
 	router := mux.NewRouter()
 
@@ -83,11 +95,15 @@ func main() {
 	recoveryMiddleware := middleware.NewRecoveryMiddleware(log)
 	router.Use(recoveryMiddleware.Middleware, requestLogger.Middleware)
 
-	router.HandleFunc("/health", healthHandler.HandleHealth).Methods("GET")
+	router.HandleFunc("/health", bookModule.HealthHandler.HandleHealth).Methods("GET")
 
-	apiRouter := router.PathPrefix("/api").Subrouter()
-
-	apiRouter.PathPrefix("/books").Subrouter()
+	// Set up routes
+	routes.SetupRoutes(
+		router,
+		bookModule.BookHandler,
+		bookModule.JWTAuth,
+		log,
+	)
 
 	httpServer := &http.Server{
 		Addr:         ":" + cfg.ServerPort,
@@ -114,6 +130,9 @@ func main() {
 			Timeout:               20 * time.Second,
 		}),
 	)
+
+	// Register gRPC handlers
+	bookModule.RegisterGRPCHandlers(grpcServer)
 
 	healthServer := health.NewServer()
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)

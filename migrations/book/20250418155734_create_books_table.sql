@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS books (
     average_rating FLOAT DEFAULT 0,
     quantity INT NOT NULL DEFAULT 1,
     available_quantity INT NOT NULL DEFAULT 1,
-    category_ids TEXT[],
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMP
@@ -26,6 +25,9 @@ CREATE INDEX IF NOT EXISTS idx_books_author ON books(author);
 CREATE INDEX IF NOT EXISTS idx_books_isbn ON books(isbn);
 CREATE INDEX IF NOT EXISTS idx_books_status ON books(status);
 CREATE INDEX IF NOT EXISTS idx_books_deleted_at ON books(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_books_language ON books(language);
+CREATE INDEX IF NOT EXISTS idx_books_published_year ON books(published_year);
+
 
 -- migrate:down
 DROP TABLE IF EXISTS books;

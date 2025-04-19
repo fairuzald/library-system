@@ -1,7 +1,7 @@
 -- migrate:up
 CREATE TABLE IF NOT EXISTS books_categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    book_id UUID NOT NULL,
+    book_id UUID NOT NULL REFERENCES books(id) ON DELETE CASCADE,
     category_id UUID NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
