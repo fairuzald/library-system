@@ -1,0 +1,712 @@
+{
+  "info": {
+    "name": "Library Management System API",
+    "description": "A complete API collection for the Library Management System with User, Book, and Category microservices",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "description": "User authentication endpoints",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/auth/register",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"username\": \"testuser\",\n  \"password\": \"Password123\",\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"phone\": \"123-456-7890\",\n  \"address\": \"123 Test St\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/auth/login",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username_or_email\": \"testuser\",\n  \"password\": \"Password123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = JSON.parse(responseBody);",
+                  "if (jsonData && jsonData.data && jsonData.data.access_token) {",
+                  "    pm.environment.set('ACCESS_TOKEN', jsonData.data.access_token);",
+                  "    pm.environment.set('REFRESH_TOKEN', jsonData.data.refresh_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/auth/refresh",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "auth", "refresh"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{REFRESH_TOKEN}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = JSON.parse(responseBody);",
+                  "if (jsonData && jsonData.data && jsonData.data.access_token) {",
+                  "    pm.environment.set('ACCESS_TOKEN', jsonData.data.access_token);",
+                  "    pm.environment.set('REFRESH_TOKEN', jsonData.data.refresh_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/auth/logout",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "User management endpoints",
+      "item": [
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users/me",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "me"]
+            }
+          }
+        },
+        {
+          "name": "Get User By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users/{{USER_ID}}",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "{{USER_ID}}"]
+            }
+          }
+        },
+        {
+          "name": "Create User (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"username\": \"admin\",\n  \"password\": \"AdminPass123\",\n  \"first_name\": \"Admin\",\n  \"last_name\": \"User\",\n  \"role\": \"admin\",\n  \"phone\": \"123-456-7890\",\n  \"address\": \"123 Admin St\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users/{{USER_ID}}",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "{{USER_ID}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Updated\",\n  \"last_name\": \"Name\",\n  \"phone\": \"987-654-3210\",\n  \"address\": \"456 Updated St\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users/{{USER_ID}}/password",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "{{USER_ID}}", "password"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"Password123\",\n  \"new_password\": \"NewPassword123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Users (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users?page=1&limit=10",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "role",
+                  "value": "member",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "active",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete User (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/users/{{USER_ID}}",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "users", "{{USER_ID}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "description": "Book category management endpoints",
+      "item": [
+        {
+          "name": "List Categories",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{API_URL}}/api/categories?page=1&limit=20",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "categories"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "parent_id",
+                  "value": "null",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Category",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{API_URL}}/api/categories/{{CATEGORY_ID}}",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "categories", "{{CATEGORY_ID}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Category by Name",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{API_URL}}/api/categories/name?name=Fiction",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "categories", "name"],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "Fiction"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Category Children",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{API_URL}}/api/categories/{{CATEGORY_ID}}/children",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "categories", "{{CATEGORY_ID}}", "children"]
+            }
+          }
+        },
+        {
+          "name": "Create Category (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/categories",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "categories"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Category\",\n  \"description\": \"Description of the new category\",\n  \"parent_id\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Category (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/categories/{{CATEGORY_ID}}",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "categories", "{{CATEGORY_ID}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Category Name\",\n  \"description\": \"Updated description\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Category (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/categories/{{CATEGORY_ID}}",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "categories", "{{CATEGORY_ID}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Books",
+      "description": "Book management endpoints",
+      "item": [
+        {
+          "name": "List Books",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{API_URL}}/api/books?page=1&limit=10",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "books"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "available",
+                  "disabled": true
+                },
+                {
+                  "key": "author",
+                  "value": "Orwell",
+                  "disabled": true
+                },
+                {
+                  "key": "language",
+                  "value": "English",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Book",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{API_URL}}/api/books/{{BOOK_ID}}",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "books", "{{BOOK_ID}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Book by ISBN",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{API_URL}}/api/books/isbn?isbn=9780451524935",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "books", "isbn"],
+              "query": [
+                {
+                  "key": "isbn",
+                  "value": "9780451524935"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Books",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{API_URL}}/api/books/search?query=Orwell&page=1&limit=10",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "books", "search"],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "Orwell"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "field",
+                  "value": "author",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Books by Category",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{API_URL}}/api/books/category/{{CATEGORY_ID}}?page=1&limit=10",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "books", "category", "{{CATEGORY_ID}}"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Book (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/books",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "books"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"New Book Title\",\n  \"author\": \"Author Name\",\n  \"isbn\": \"9781234567890\",\n  \"published_year\": 2022,\n  \"publisher\": \"Publisher Name\",\n  \"description\": \"Book description\",\n  \"category_ids\": [\"50c3ef9e-d1aa-4e88-aa75-7d92c9d11111\"],\n  \"language\": \"English\",\n  \"page_count\": 250,\n  \"cover_image\": \"https://example.com/cover.jpg\",\n  \"quantity\": 5\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Book (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/books/{{BOOK_ID}}",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "books", "{{BOOK_ID}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Book Title\",\n  \"description\": \"Updated description\",\n  \"category_ids\": [\"50c3ef9e-d1aa-4e88-aa75-7d92c9d11111\", \"60c3ef9e-d1aa-4e88-aa75-7d92c9d11111\"],\n  \"status\": \"available\",\n  \"quantity\": 10,\n  \"available_quantity\": 8\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Book (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{API_URL}}/api/books/{{BOOK_ID}}",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "books", "{{BOOK_ID}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health Checks",
+      "description": "Health check endpoints for each service",
+      "item": [
+        {
+          "name": "API Gateway Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{API_URL}}/health",
+              "host": ["{{API_URL}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "User Service Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{USER_SERVICE_URL}}/health",
+              "host": ["{{USER_SERVICE_URL}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Book Service Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BOOK_SERVICE_URL}}/health",
+              "host": ["{{BOOK_SERVICE_URL}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Category Service Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{CATEGORY_SERVICE_URL}}/health",
+              "host": ["{{CATEGORY_SERVICE_URL}}"],
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "API_URL",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "USER_SERVICE_URL",
+      "value": "http://localhost:8082",
+      "type": "string"
+    },
+    {
+      "key": "BOOK_SERVICE_URL",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "CATEGORY_SERVICE_URL",
+      "value": "http://localhost:8081",
+      "type": "string"
+    }
+  ]
+}

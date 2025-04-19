@@ -15,7 +15,8 @@ import (
 	"github.com/fairuzald/library-system/pkg/config"
 	"github.com/fairuzald/library-system/pkg/logger"
 	"github.com/fairuzald/library-system/pkg/middleware"
-	"github.com/fairuzald/library-system/services/category-service/internal/handlers"
+	"github.com/fairuzald/library-system/services/category-service/internal/module"
+	"github.com/fairuzald/library-system/services/category-service/internal/routes"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
@@ -75,7 +76,16 @@ func main() {
 		defer redisClient.Close()
 	}
 
-	healthHandler := handlers.NewHealthHandler(db, log)
+	// Create the module instance
+	categoryModule, err := module.New(
+		db,
+		redisClient,
+		cfg.JWTSecret,
+		log,
+	)
+	if err != nil {
+		log.Fatal("Failed to initialize category service module", zap.Error(err))
+	}
 
 	router := mux.NewRouter()
 
@@ -83,11 +93,15 @@ func main() {
 	recoveryMiddleware := middleware.NewRecoveryMiddleware(log)
 	router.Use(recoveryMiddleware.Middleware, requestLogger.Middleware)
 
-	router.HandleFunc("/health", healthHandler.HandleHealth).Methods("GET")
+	router.HandleFunc("/health", categoryModule.HealthHandler.HandleHealth).Methods("GET")
 
-	apiRouter := router.PathPrefix("/api").Subrouter()
-
-	apiRouter.PathPrefix("/categories").Subrouter()
+	// Set up routes
+	routes.SetupRoutes(
+		router,
+		categoryModule.CategoryHandler,
+		categoryModule.JWTAuth,
+		log,
+	)
 
 	httpServer := &http.Server{
 		Addr:         ":" + cfg.ServerPort,
@@ -114,6 +128,9 @@ func main() {
 			Timeout:               20 * time.Second,
 		}),
 	)
+
+	// Register gRPC handlers
+	categoryModule.RegisterGRPCHandlers(grpcServer)
 
 	healthServer := health.NewServer()
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
